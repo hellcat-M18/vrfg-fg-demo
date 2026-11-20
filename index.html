@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VRFG フレーム生成デモ</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%232f6fde'/%3E%3Cpath d='M5 4l7 4-7 4z' fill='white'/%3E%3C/svg%3E">
+<style>
+  :root {
+    --bg: #f6f7f9; --panel: #fff; --fg: #1d2129; --muted: #5d6573; --line: #dde1e7; --accent: #2f6fde; --accent-fg: #fff; --err: #c0392b;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #14161a; --panel: #1d2026; --fg: #e6e8ec; --muted: #9aa2ae; --line: #30343c; --accent: #5b8ff0; --accent-fg: #fff; --err: #ff6b5b; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.6 system-ui, "Segoe UI", "Hiragino Sans", "Yu Gothic UI", sans-serif; }
+  main { max-width: 1280px; margin: 0 auto; padding: 20px 16px 48px; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .lead { color: var(--muted); margin: 0 0 16px; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; margin-bottom: 14px; }
+  #drop { border: 2px dashed var(--line); border-radius: 10px; padding: 22px; text-align: center; cursor: pointer; display: block; }
+  #drop.over { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent); }
+  #drop .name { color: var(--muted); font-size: 13px; }
+  #drop input { display: none; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px 16px; margin-top: 14px; }
+  label.f { display: flex; flex-direction: column; gap: 3px; font-size: 12px; color: var(--muted); }
+  label.c { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+  select, input[type=number] { font: inherit; color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 4px 6px; }
+  button { font: inherit; border: 1px solid var(--line); background: var(--bg); color: var(--fg); border-radius: 6px; padding: 5px 12px; cursor: pointer; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
+  button:disabled { opacity: .45; cursor: default; }
+  .row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+  progress { flex: 1 1 200px; height: 10px; }
+  #status { font-size: 13px; color: var(--muted); margin-top: 6px; word-break: break-all; }
+  #error { color: var(--err); margin-top: 8px; white-space: pre-wrap; }
+  .view { display: flex; justify-content: center; background: #000; border-radius: 8px; overflow: hidden; }
+  #view { display: block; max-width: 100%; max-height: 74vh; width: auto; height: auto; touch-action: none; cursor: ew-resize; }
+  #seek { width: 100%; margin: 10px 0 4px; }
+  #time { font-variant-numeric: tabular-nums; font-size: 13px; }
+  #hint, .note { font-size: 12px; color: var(--muted); }
+  details { margin-top: 10px; font-size: 13px; color: var(--muted); }
+  details p { margin: 6px 0; }
+</style>
+</head>
+<body>
+<main>
+  <h1>VRFG フレーム生成デモ</h1>
+  <p class="lead">動画（または連番画像）を選ぶと、ブラウザの中（WebCodecs と WebGPU）だけでフレーム補間をかけます。ファイルはどこにも送信されません。読み込むと最初から最後まで全フレームを生成して動画に圧縮し、それを再生します。生成し終えた所からすぐ見られます。</p>
+
+  <section class="panel">
+    <label id="drop">
+      <input id="file" type="file" accept="video/*,image/*" multiple>
+      <div><b>ここに動画をドロップ</b>、またはクリックして選択（連番画像は複数選択）</div>
+      <div class="name">未選択</div>
+    </label>
+    <div class="grid">
+      <label class="f">モデル
+        <select id="model">
+          <option value="vi_disrule" selected>vi_disrule（VRFG）</option>
+          <option value="rife_v425lite">RIFE 4.25 lite（比較用）</option>
+        </select>
+      </label>
+      <label class="f">ネットワークの解像度
+        <select id="size">
+          <option value="half" selected>動画の半分（縦横それぞれ 1/2）</option>
+          <option value="auto">約 960×544 相当（拡張機能の既定）</option>
+          <option value="640x352">約 640×352 相当</option>
+          <option value="960x544">約 960×544 相当</option>
+          <option value="1280x736">約 1280×736 相当</option>
+        </select>
+      </label>
+      <label class="f">出力の高さ（上限）
+        <select id="maxH">
+          <option value="720">720</option>
+          <option value="1080" selected>1080</option>
+          <option value="1440">1440</option>
+          <option value="0">元のまま</option>
+        </select>
+      </label>
+      <label class="f">連番画像の fps
+        <input id="imgFps" type="number" min="1" max="240" value="30">
+      </label>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <label class="c"><input id="x4" type="checkbox" checked> 4x も作る（2x の中間フレームを入力に、前後それぞれもう一度補間。推論は 3 回）</label>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <button id="stop" disabled>生成を止める</button>
+      <progress id="progress" value="0" max="1"></progress>
+    </div>
+    <div id="status"></div>
+    <div id="error" hidden></div>
+  </section>
+
+  <section class="panel" id="stage" hidden>
+    <div class="view"><canvas id="view" width="16" height="9"></canvas></div>
+    <input id="seek" type="range" min="0" max="0" step="1" value="0">
+    <div class="row">
+      <button id="play">▶ 再生</button>
+      <button id="back">◀ 1 枚</button>
+      <button id="fwd">1 枚 ▶</button>
+      <label class="c">速度
+        <select id="rate">
+          <option value="1" selected>1 倍</option>
+          <option value="0.5">0.5 倍</option>
+          <option value="0.25">0.25 倍</option>
+          <option value="0.1">0.1 倍</option>
+          <option value="0.03">0.03 倍</option>
+        </select>
+      </label>
+      <label class="c">左 <select id="left"></select></label>
+      <label class="c">右 <select id="right"></select></label>
+      <label class="c"><input id="marks" type="checkbox"> 生成フレームに印</label>
+      <label class="c"><input id="loop" type="checkbox" checked> ループ</label>
+      <label class="c"><input id="sound" type="checkbox" checked> 音 <input id="volume" type="range" min="0" max="1" step="0.05" value="0.8" style="width:80px"></label>
+      <span id="time"></span>
+    </div>
+    <div id="hint" style="margin-top:6px"></div>
+    <div id="perf" class="note"></div>
+    <div id="perfFrame" class="note"></div>
+    <details>
+      <summary>見方</summary>
+      <p>動画の上をドラッグすると、左右の境目が動きます。時間軸は左右で共通で、左右それぞれ自分のフレームレートで表示します（原画は同じ枚数を長く表示）。</p>
+      <p>読み込むと、全フレームを先に生成して 1 本の動画（4x、4x を切ると 2x）に圧縮します（ブラウザの VideoEncoder、保存先はメモリで、大きいとブラウザがディスクに逃がします）。再生はその動画をデコードするだけなので、生成の速さに関係なくなめらかです。生成が終わっていない所まで来ると、そこで待ちます。設定を変えると最初から作り直します。</p>
+      <p>4x は、2x で作った中間フレームと前後の元フレームで、もう 2 回補間したものです。</p>
+      <p>Space で再生・停止、ボタンで 1 枚ずつ送れます（矢印キーは使いません）。対応形式は MP4 / MOV（OBS などの断片化 MP4 を含む）と WebM / MKV です。音は 0.25〜4 倍速のときだけ鳴らします。</p>
+    </details>
+  </section>
+</main>
+<script type="module" src="./dist/app.js"></script>
+</body>
+</html>
