@@ -5,7 +5,7 @@
 
 - デコード・生成・エンコードはすべて、開いた端末のブラウザの中（WebCodecs と WebGPU）で行います。動画はどこにも送信されません。
 - 必要なもの：WebGPU と WebCodecs が使えるブラウザ（Chrome / Edge 121 以降）。
-- 対応形式：MP4 / MOV（断片化 MP4 を含む）、WebM / MKV、連番画像。
+- 対応形式：MP4 / MOV（断片化 MP4 を含む）、WebM / MKV、連番画像。コーデックは H.264・HEVC・AV1・VP9・VP8（HEVC はブラウザと GPU が対応している場合のみ）。
 
 ## モデル
 
