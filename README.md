@@ -11,8 +11,9 @@
 
 | モデル | 中身 |
 |---|---|
-| vi_disrule（既定） | VRFG の補間モデル（DIS による動き推定と小型 U-Net、止まった箇所の規則つき） |
-| SPIRE | 共有ピラミッド型の補間モデル（前フレームの flow を初期値に引き継ぐ temporal、止まった箇所の規則つき） |
+| SPIRE post_gamma（既定） | 共有ピラミッド型の最新補間モデル（δ 後に共有 γ で 1 回仕上げ＋前フレームの flow を引き継ぐ temporal＋止まった箇所の規則つき） |
+| SPIRE | 共有ピラミッド型の旧版補間モデル（temporal＋止まった箇所の規則つき） |
+| vi_disrule | VRFG の補間モデル（DIS による動き推定と小型 U-Net、止まった箇所の規則つき） |
 | RIFE 4.25 lite | 比較用。Practical-RIFE の重み（MIT、THIRD_PARTY_NOTICES.md） |
 
 このリポジトリは、別のリポジトリから `tools/pages.mjs` で書き出したビルド結果です。
