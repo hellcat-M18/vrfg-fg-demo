@@ -56,7 +56,9 @@
     <div class="grid">
       <label class="f">モデル
         <select id="model">
-          <option value="spire_postg" selected>SPIRE post_gamma（最新）</option>
+          <option value="spire_g8h4_w8a8" selected>SPIRE g8h4 W8A8（超軽量 −64%・8bit）</option>
+          <option value="spire_postg_w8a8">SPIRE post_gamma W8A8（高精度・8bit）</option>
+          <option value="spire_postg">SPIRE post_gamma（fp32）</option>
           <option value="spire">SPIRE（temporal）</option>
           <option value="vi_disrule">vi_disrule（VRFG）</option>
           <option value="rife_v425lite">RIFE 4.25 lite（比較用）</option>
@@ -65,6 +67,7 @@
       <label class="f">ネットワークの解像度
         <select id="size">
           <option value="half" selected>動画の半分（縦横それぞれ 1/2）</option>
+          <option value="full">動画そのまま（等倍 ×1.0）</option>
           <option value="auto">約 960×544 相当（拡張機能の既定）</option>
           <option value="640x352">約 640×352 相当</option>
           <option value="960x544">約 960×544 相当</option>
@@ -129,6 +132,6 @@
     </details>
   </section>
 </main>
-<script type="module" src="./dist/app.js?v=dfd202588d"></script>
+<script type="module" src="./dist/app.js?v=444a1f52df"></script>
 </body>
 </html>

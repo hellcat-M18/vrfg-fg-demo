@@ -11,7 +11,9 @@
 
 | モデル | 中身 |
 |---|---|
-| SPIRE post_gamma（既定） | 共有ピラミッド型の最新補間モデル（δ 後に共有 γ で 1 回仕上げ＋前フレームの flow を引き継ぐ temporal＋止まった箇所の規則つき） |
+| SPIRE g8h4 W8A8（既定・超軽量） | 演算量 −64%（7,744 重み）・全層 8-bit 量子化学習の高速モデル（post_gamma＋snorm8＋temporal＋OOB 片側ブレンド＋止まった箇所の規則） |
+| SPIRE post_gamma W8A8（高精度） | 全層 8-bit 量子化学習版の高精度モデル（post_gamma＋snorm8＋temporal＋OOB 片側ブレンド＋止まった箇所の規則） |
+| SPIRE post_gamma（fp32） | 共有ピラミッド型の fp32 版（δ 後に共有 γ で 1 回仕上げ＋temporal＋止まった箇所の規則） |
 | SPIRE | 共有ピラミッド型の旧版補間モデル（temporal＋止まった箇所の規則つき） |
 | vi_disrule | VRFG の補間モデル（DIS による動き推定と小型 U-Net、止まった箇所の規則つき） |
 | RIFE 4.25 lite | 比較用。Practical-RIFE の重み（MIT、THIRD_PARTY_NOTICES.md） |
