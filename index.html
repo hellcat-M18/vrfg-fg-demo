@@ -30,14 +30,13 @@
   button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
   button:disabled { opacity: .45; cursor: default; }
   .row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
-  progress { flex: 1 1 200px; height: 10px; }
   #status { font-size: 13px; color: var(--muted); margin-top: 6px; word-break: break-all; }
   #error { color: var(--err); margin-top: 8px; white-space: pre-wrap; }
-  .view { display: flex; justify-content: center; background: #000; border-radius: 8px; overflow: hidden; }
-  #view { display: block; max-width: 100%; height: auto; touch-action: none; cursor: ew-resize; }
+  .view { position: relative; display: flex; justify-content: center; background: #000; border-radius: 8px; overflow: hidden; }
+  .view video { display: block; max-width: 100%; max-height: 70vh; height: auto; }
   #seek { width: 100%; margin: 10px 0 4px; }
   #time { font-variant-numeric: tabular-nums; font-size: 13px; }
-  #hint, .note { font-size: 12px; color: var(--muted); }
+  .note { font-size: 12px; color: var(--muted); }
   details { margin-top: 10px; font-size: 13px; color: var(--muted); }
   details p { margin: 6px 0; }
 </style>
@@ -45,12 +44,12 @@
 <body>
 <main>
   <h1>SPIRE フレーム生成デモ</h1>
-  <p class="lead">動画（または連番画像）を選ぶと、ブラウザの中（WebCodecs と WebGPU）だけでフレーム補間をかけます。ファイルはどこにも送信されません。読み込むと最初から最後まで全フレームを生成して動画に圧縮し、それを再生します。生成し終えた所からすぐ見られます。</p>
+  <p class="lead">動画を選ぶと、ブラウザの動画プレイヤーで再生しながら、WebGPU でその場でフレームを補間して表示します（拡張機能と同じ処理です）。ファイルはどこにも送信されません。</p>
 
   <section class="panel">
     <label id="drop">
-      <input id="file" type="file" accept="video/*,image/*" multiple>
-      <div><b>ここに動画をドロップ</b>、またはクリックして選択（連番画像は複数選択）</div>
+      <input id="file" type="file" accept="video/*">
+      <div><b>ここに動画をドロップ</b>、またはクリックして選択</div>
       <div class="name">未選択</div>
     </label>
     <div class="grid">
@@ -69,72 +68,55 @@
       </label>
       <label class="f">ネットワークの解像度
         <select id="size">
-          <option value="half" selected>動画の半分（縦横それぞれ 1/2）</option>
-          <option value="full">動画そのまま（等倍 ×1.0）</option>
-          <option value="auto">約 960×544 相当（拡張機能の既定）</option>
+          <option value="auto" selected>約 960×544 相当（拡張機能の既定）</option>
           <option value="640x352">約 640×352 相当</option>
           <option value="960x544">約 960×544 相当</option>
           <option value="1280x736">約 1280×736 相当</option>
         </select>
       </label>
-      <label class="f">出力の高さ（上限）
-        <select id="maxH">
-          <option value="720">720</option>
-          <option value="1080" selected>1080</option>
-          <option value="1440">1440</option>
-          <option value="0">元のまま</option>
+      <label class="f">倍率
+        <select id="mult">
+          <option value="2" selected>2x</option>
+          <option value="4">4x（推論 1 回、flow を時刻に合わせて伸ばす）</option>
         </select>
       </label>
-      <label class="f">連番画像の fps
-        <input id="imgFps" type="number" min="1" max="240" value="30">
-      </label>
     </div>
     <div class="row" style="margin-top:12px">
-      <label class="c"><input id="x4" type="checkbox"> 4x も作る（2x の中間フレームを入力に、前後それぞれもう一度補間。推論は 3 回）</label>
-    </div>
-    <div class="row" style="margin-top:12px">
-      <button id="stop" disabled>生成を止める</button>
-      <progress id="progress" value="0" max="1"></progress>
+      <label class="c"><input id="enabled" type="checkbox" checked> フレーム生成</label>
+      <label class="c"><input id="compare" type="checkbox"> 左右で比べる（左：元の映像、右：生成あり）</label>
+      <label class="c"><input id="genOnly" type="checkbox"> 生成フレームだけ表示</label>
+      <label class="c"><input id="stats" type="checkbox" checked> 情報を表示</label>
     </div>
     <div id="status"></div>
     <div id="error" hidden></div>
   </section>
 
   <section class="panel" id="stage" hidden>
-    <div class="view"><canvas id="view" width="16" height="9"></canvas></div>
-    <input id="seek" type="range" min="0" max="0" step="1" value="0">
+    <div class="view" id="view"><video id="video" playsinline preload="auto"></video></div>
+    <input id="seek" type="range" min="0" max="0" step="any" value="0">
     <div class="row">
-      <button id="play">▶ 再生</button>
-      <button id="back">◀ 1 枚</button>
-      <button id="fwd">1 枚 ▶</button>
+      <button id="play" class="primary">▶ 再生</button>
       <label class="c">速度
         <select id="rate">
           <option value="1" selected>1 倍</option>
           <option value="0.5">0.5 倍</option>
           <option value="0.25">0.25 倍</option>
           <option value="0.1">0.1 倍</option>
-          <option value="0.03">0.03 倍</option>
         </select>
       </label>
-      <label class="c">左 <select id="left"></select></label>
-      <label class="c">右 <select id="right"></select></label>
-      <label class="c"><input id="marks" type="checkbox"> 生成フレームに印</label>
       <label class="c"><input id="loop" type="checkbox" checked> ループ</label>
-      <label class="c"><input id="sound" type="checkbox" checked> 音 <input id="volume" type="range" min="0" max="1" step="0.05" value="0.8" style="width:80px"></label>
+      <label class="c">音 <input id="volume" type="range" min="0" max="1" step="0.05" value="0.8" style="width:90px"></label>
+      <button id="full">全画面</button>
       <span id="time"></span>
     </div>
-    <div id="hint" style="margin-top:6px"></div>
-    <div id="perf" class="note"></div>
-    <div id="perfFrame" class="note"></div>
     <details>
       <summary>見方</summary>
-      <p>動画の上をドラッグすると、左右の境目が動きます。時間軸は左右で共通で、左右それぞれ自分のフレームレートで表示します（原画は同じ枚数を長く表示）。</p>
-      <p>読み込むと、全フレームを先に生成して 1 本の動画（4x、4x を切ると 2x）に圧縮します（ブラウザの VideoEncoder、保存先はメモリで、大きいとブラウザがディスクに逃がします）。再生はその動画をデコードするだけなので、生成の速さに関係なくなめらかです。生成が終わっていない所まで来ると、そこで待ちます。設定を変えると最初から作り直します。</p>
-      <p>4x は、2x で作った中間フレームと前後の元フレームで、もう 2 回補間したものです。</p>
-      <p>Space で再生・停止、ボタンで 1 枚ずつ送れます（矢印キーは使いません）。対応形式は MP4 / MOV（OBS などの断片化 MP4 を含む）と WebM / MKV で、コーデックは H.264・HEVC（H.265）・AV1・VP9・VP8 です（HEVC はブラウザと GPU が対応している場合のみ）。音は 0.25〜4 倍速のときだけ鳴らします。</p>
+      <p>再生はブラウザの動画プレイヤーそのものなので、ブラウザで再生できる形式・コーデックならそのまま使えます。補間は再生しながらその場で行い、間に合わないフレームは元のフレームのまま表示します（右上の情報の「間に合わず」）。</p>
+      <p>2x は元のフレームの間に 1 枚、4x は 3 枚（時刻 0.25・0.5・0.75）を出します。4x は推論 1 回の中間の flow を時刻に合わせて伸ばしたもので、画面の更新が追いつかない（動画の fps × 4 が画面のリフレッシュレートを大きく超える）ときは 2x になります。60Hz の画面では、24〜30fps の動画の 2x までが目安です。</p>
+      <p>動画の fps × 2 が画面のリフレッシュレートに近いとき（60fps の動画を 60Hz の画面で見るなど）は、補間をかけずにそのまま表示します。一時停止中は元のフレームを表示します。Space で再生・停止します。</p>
     </details>
   </section>
 </main>
-<script type="module" src="./dist/app.js?v=6e2b57c3b5"></script>
+<script type="module" src="./dist/app.js?v=ecd1e53769"></script>
 </body>
 </html>
