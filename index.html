@@ -34,6 +34,11 @@
   #error { color: var(--err); margin-top: 8px; white-space: pre-wrap; }
   .view { position: relative; display: flex; justify-content: center; background: #000; border-radius: 8px; overflow: hidden; }
   .view video { display: block; max-width: 100%; max-height: 70vh; height: auto; }
+  #split { position: absolute; z-index: 3; width: 24px; margin-left: -12px; cursor: ew-resize; touch-action: none; display: none; }
+  #split::after { content: ''; position: absolute; left: 50%; top: 50%; width: 22px; height: 22px; margin: -11px 0 0 -11px;
+    border-radius: 50%; background: rgba(255,255,255,.92); box-shadow: 0 1px 4px rgba(0,0,0,.5); }
+  #split::before { content: '◀▶'; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 1;
+    font-size: 8px; letter-spacing: -1px; color: #333; }
   #seek { width: 100%; margin: 10px 0 4px; }
   #time { font-variant-numeric: tabular-nums; font-size: 13px; }
   .note { font-size: 12px; color: var(--muted); }
@@ -84,16 +89,16 @@
     </div>
     <div class="row" style="margin-top:12px">
       <label class="c"><input id="enabled" type="checkbox" checked> フレーム生成</label>
-      <label class="c"><input id="compare" type="checkbox"> 左右で比べる（左：元の映像、右：生成あり）</label>
+      <label class="c"><input id="compare" type="checkbox" checked> 左右で比べる（左：元の映像、右：生成あり、境目はドラッグで動かせます）</label>
       <label class="c"><input id="genOnly" type="checkbox"> 生成フレームだけ表示</label>
-      <label class="c"><input id="stats" type="checkbox" checked> 情報を表示</label>
+      <label class="c"><input id="stats" type="checkbox"> 情報を表示</label>
     </div>
     <div id="status"></div>
     <div id="error" hidden></div>
   </section>
 
   <section class="panel" id="stage" hidden>
-    <div class="view" id="view"><video id="video" playsinline preload="auto"></video></div>
+    <div class="view" id="view"><video id="video" playsinline preload="auto"></video><div id="split" title="ドラッグで境目を動かす"></div></div>
     <input id="seek" type="range" min="0" max="0" step="any" value="0">
     <div class="row">
       <button id="play" class="primary">▶ 再生</button>
@@ -118,6 +123,6 @@
     </details>
   </section>
 </main>
-<script type="module" src="./dist/app.js?v=4152134796"></script>
+<script type="module" src="./dist/app.js?v=31eefbd3ec"></script>
 </body>
 </html>
